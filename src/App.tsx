@@ -25,37 +25,32 @@ const App: React.FC = () => {
   // STATES :
   // const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [roomId, setRoomId] = useState('')
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
 
 
   const remoteStream = new MediaStream()
 
-
-
-
-    // INITIALIZE :
-    useEffect(() => {
-      const initializeMediaStream = async () => {
-          try {
-              const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-              setLocalStream(stream);
-              // if (localVideoRef.current) {
-              //     localVideoRef.current.srcObject = stream;
-              // }
-          } catch (error) {
-              console.error('Error accessing webcam:', error);
-          }
-      };
-      initializeMediaStream();
+  // INITIALIZE 1 :
+  useEffect(() => {
+    const initializeMediaStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        setLocalStream(stream);
+        // if (localVideoRef.current) {
+        //     localVideoRef.current.srcObject = stream;
+        // }
+      } catch (error) {
+        console.error('Error accessing webcam:', error);
+      }
+    };
+    initializeMediaStream();
   }, []);
 
+  // INITIALIZE 2 :
   useEffect(() => {
-    
     initializePeerConnection()
-    
-  
-}, [localStream]);
-
-
+  }, [localStream]);
 
   async function handleStartBroadcast(peerConnection: RTCPeerConnection) {
     const offer = await peerConnection.createOffer();
@@ -73,11 +68,13 @@ const App: React.FC = () => {
         throw new Error('Request failed');
       }
       const data: any = await response.json();
+      setRoomId(data.data)
       console.log("Fetch save room with offer response : ", data);
     } catch (error) {
       console.error('An error occurred:', error);
       throw error;
     }
+    setPeerConnection(peerConnection)
     // Send the offer to the remote peer
     // For simplicity, you can use a signaling server or a WebSocket to exchange session descriptions
     // Example: socket.emit('offer', offer);
@@ -130,17 +127,69 @@ const App: React.FC = () => {
     });
     if (localStream) {
       localStream.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, localStream);
+        peerConnection.addTrack(track, localStream);
       });
-  }
+    }
 
     handleStartBroadcast(peerConnection);
-
-
 
   };
 
   const saveCallerIceCandidate = async (candidate: RTCIceCandidate) => {
+
+  }
+
+  const getRemoteStream = async (roomId: string) => {
+    console.log(roomId);
+    try {
+      const response = await fetch(serverUrl + "save-room-with-answer/" + roomId, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': ''
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+      const responseJSON = await response.json();
+      console.log("Fetch get room with answer response : ", responseJSON.data.answer);
+
+      const rtcSessionDescription = new RTCSessionDescription(responseJSON.data.answer);
+      if (peerConnection)
+        await peerConnection.setRemoteDescription(rtcSessionDescription);
+
+    } catch (error) {
+      console.error('An error occurred:', error);
+      throw error;
+    }
+
+    try {
+      const response = await fetch(serverUrl + "get-callee-candidates", {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': ''
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+      const responseJSON: { data: RTCIceCandidateInit[] } = await response.json();
+      console.log("Fetch get callee candidates response : ", responseJSON);
+
+      if (peerConnection) {
+        responseJSON.data.map(async candidate => {
+          console.log("Testing candidate : ", candidate);
+
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        })
+      }
+
+    } catch (error) {
+      console.error('An error occurred:', error);
+      throw error;
+    }
 
   }
 
@@ -150,6 +199,7 @@ const App: React.FC = () => {
         <h2>Remote Video</h2>
         <video ref={remoteVideoRef} autoPlay playsInline muted />
       </div>
+      <button onClick={() => getRemoteStream('10')} >GET_STREAM_FOR_ROOM_ID_{roomId}</button>
     </div>
   );
 };

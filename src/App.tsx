@@ -23,21 +23,46 @@ const App: React.FC = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   // STATES :
-  // const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
 
+  let oneTime = true
+
   // INITIALIZE :
   useEffect(() => {
-    initializePeerConnection()
+    if (oneTime) {
+      initializePeerConnection()
+      oneTime = false
+    }
   }, []);
 
   // INITIALIZE PEER CONNECTION WITH REMOTE STREAM :
-  const initializePeerConnection = () => {
+  const initializePeerConnection = async () => {
+    // const a = async () => {
     const peerConnection = new RTCPeerConnection(configurationIceServer);
     peerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+      console.log("icecandidate EVENT LISTENER");
+
       if (event.candidate) {
-        fetchIceCandidate(event.candidate)
+        saveCallerIceCandidate(event.candidate)
+        console.log("EVENT_ICE_CANDIDATE", event.candidate);
+        try {
+          const response = await fetch(serverUrl + "save-caller-candidates", {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event.candidate),
+          });
+          if (!response.ok) {
+            throw new Error('Request failed');
+          }
+          const data: RTCIceCandidate = await response.json();
+          console.log("Fetch save caller candidates response : ", data);
+        } catch (error) {
+          console.error('An error occurred:', error);
+          throw error;
+        }
         // Send the ICE candidate to the remote peer
         // For simplicity, you can use a signaling server or a WebSocket to exchange ICE candidates
         // Example: socket.emit('candidate', event.candidate.toJSON());
@@ -50,37 +75,6 @@ const App: React.FC = () => {
         remoteVideoRef.current.srcObject = event.streams[0];
       }
     });
-    handleStartBroadcast()
-    // if (localStream) {
-    //   localStream.getTracks().forEach((track) => {
-    //     peerConnection.addTrack(track, localStream);
-    //   });
-    // }
-    setPeerConnection(peerConnection);
-  };
-
-  const fetchIceCandidate = async (candidate: RTCIceCandidate) => {
-    console.log("EVENT_ICE_CANDIDATE", candidate);
-    try {
-      const response = await fetch(serverUrl + "save-caller-candidates", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(candidate),
-      });
-      if (!response.ok) {
-        throw new Error('Request failed');
-      }
-      const data: RTCIceCandidate = await response.json();
-      console.log("Fetch save caller candidates response : ", data);
-    } catch (error) {
-      console.error('An error occurred:', error);
-      throw error;
-    }
-  }
-
-  const handleStartBroadcast = async () => {
     if (peerConnection) {
       const offer = await peerConnection.createOffer();
       await peerConnection.setLocalDescription(offer);
@@ -96,7 +90,7 @@ const App: React.FC = () => {
         if (!response.ok) {
           throw new Error('Request failed');
         }
-        const data: RTCSessionDescriptionInit = await response.json();
+        const data: any = await response.json();
         console.log("Fetch save room with offer response : ", data);
       } catch (error) {
         console.error('An error occurred:', error);
@@ -106,12 +100,14 @@ const App: React.FC = () => {
       // For simplicity, you can use a signaling server or a WebSocket to exchange session descriptions
       // Example: socket.emit('offer', offer);
     }
+    // }
+    // a();
+    setPeerConnection(peerConnection);
   };
 
-  // UPDATE LOCAL STREAM :
-  useEffect(() => {
-    initializePeerConnection();
-  }, [remoteStream]);
+  const saveCallerIceCandidate = async (candidate: RTCIceCandidate) => {
+
+  }
 
   return (
     <div>

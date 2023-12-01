@@ -23,10 +23,26 @@ const App: React.FC = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   // STATES :
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  // const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
 
+  const remoteStream = new MediaStream()
+
   let oneTime = true
+
+  // INITIALIZE :
+  useEffect(() => {
+    const initializeMediaStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        setLocalStream(stream);
+      } catch (error) {
+        console.error('Error accessing webcam:', error);
+      }
+    };
+    initializeMediaStream();
+  }, []);
 
   // INITIALIZE :
   useEffect(() => {
@@ -36,10 +52,47 @@ const App: React.FC = () => {
     }
   }, []);
 
+  async function handleStartBroadcast(peerConnection: RTCPeerConnection) {
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    console.log("READY TO SEND OFFER : ", offer);
+    try {
+      const response = await fetch(serverUrl + "save-room-with-offer", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ offer }),
+      });
+      if (!response.ok) {
+        throw new Error('Request failed');
+      }
+      const data: any = await response.json();
+      console.log("Fetch save room with offer response : ", data);
+    } catch (error) {
+      console.error('An error occurred:', error);
+      throw error;
+    }
+    // Send the offer to the remote peer
+    // For simplicity, you can use a signaling server or a WebSocket to exchange session descriptions
+    // Example: socket.emit('offer', offer);
+  }
+
   // INITIALIZE PEER CONNECTION WITH REMOTE STREAM :
-  const initializePeerConnection = async () => {
-    // const a = async () => {
+  const initializePeerConnection = () => {
     const peerConnection = new RTCPeerConnection(configurationIceServer);
+
+    peerConnection.addEventListener('track', event => {
+      console.log('Got remote track:', event.streams[0]);
+      event.streams[0].getTracks().forEach(track => {
+        console.log('Add a track to the remoteStream:', track);
+        remoteStream.addTrack(track);
+      });
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    });
+
     peerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
       console.log("icecandidate EVENT LISTENER");
 
@@ -70,39 +123,11 @@ const App: React.FC = () => {
         console.log('ICE candidate gathering completed.');
       }
     });
-    peerConnection.addEventListener('track', (event: RTCTrackEvent) => {
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0];
-      }
-    });
-    if (peerConnection) {
-      const offer = await peerConnection.createOffer();
-      await peerConnection.setLocalDescription(offer);
-      console.log("READY TO SEND OFFER : ", offer);
-      try {
-        const response = await fetch(serverUrl + "save-room-with-offer", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ offer }),
-        });
-        if (!response.ok) {
-          throw new Error('Request failed');
-        }
-        const data: any = await response.json();
-        console.log("Fetch save room with offer response : ", data);
-      } catch (error) {
-        console.error('An error occurred:', error);
-        throw error;
-      }
-      // Send the offer to the remote peer
-      // For simplicity, you can use a signaling server or a WebSocket to exchange session descriptions
-      // Example: socket.emit('offer', offer);
-    }
-    // }
-    // a();
+
+    handleStartBroadcast(peerConnection);
+
     setPeerConnection(peerConnection);
+
   };
 
   const saveCallerIceCandidate = async (candidate: RTCIceCandidate) => {

@@ -25,11 +25,11 @@ const App: React.FC = () => {
   // STATES :
   // const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
+
 
   const remoteStream = new MediaStream()
 
-  let oneTime = true
+
 
 
     // INITIALIZE :
@@ -136,7 +136,7 @@ const App: React.FC = () => {
 
     handleStartBroadcast(peerConnection);
 
-    setPeerConnection(peerConnection);
+
 
   };
 

@@ -33,15 +33,20 @@ const App: React.FC = () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
                 setLocalStream(stream);
-                if (localVideoRef.current) {
-                    localVideoRef.current.srcObject = stream;
-                }
+                // if (localVideoRef.current) {
+                //     localVideoRef.current.srcObject = stream;
+                // }
             } catch (error) {
                 console.error('Error accessing webcam:', error);
             }
         };
         initializeMediaStream();
     }, []);
+
+        // UPDATE LOCAL STREAM :
+    useEffect(() => {
+        initializePeerConnection();
+    }, [localStream]);
 
     const handleStartBroadcast = async () => {
 
@@ -122,10 +127,7 @@ const App: React.FC = () => {
         setPeerConnection(peerConnection);
     };
 
-    // UPDATE LOCAL STREAM :
-    useEffect(() => {
-        initializePeerConnection();
-    }, [localStream]);
+
 
     return (
         <div>

@@ -31,26 +31,31 @@ const App: React.FC = () => {
 
   let oneTime = true
 
-  // INITIALIZE :
-  useEffect(() => {
-    const initializeMediaStream = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-        setLocalStream(stream);
-      } catch (error) {
-        console.error('Error accessing webcam:', error);
-      }
-    };
-    initializeMediaStream();
+
+    // INITIALIZE :
+    useEffect(() => {
+      const initializeMediaStream = async () => {
+          try {
+              const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+              setLocalStream(stream);
+              // if (localVideoRef.current) {
+              //     localVideoRef.current.srcObject = stream;
+              // }
+          } catch (error) {
+              console.error('Error accessing webcam:', error);
+          }
+      };
+      initializeMediaStream();
   }, []);
 
-  // INITIALIZE :
   useEffect(() => {
-    if (oneTime) {
-      initializePeerConnection()
-      oneTime = false
-    }
-  }, []);
+    
+    initializePeerConnection()
+    
+  
+}, [localStream]);
+
+
 
   async function handleStartBroadcast(peerConnection: RTCPeerConnection) {
     const offer = await peerConnection.createOffer();
@@ -123,6 +128,11 @@ const App: React.FC = () => {
         console.log('ICE candidate gathering completed.');
       }
     });
+    if (localStream) {
+      localStream.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStream);
+      });
+  }
 
     handleStartBroadcast(peerConnection);
 

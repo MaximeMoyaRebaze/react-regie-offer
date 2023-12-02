@@ -25,6 +25,7 @@ const App: React.FC = () => {
   // STATES :
   // const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+
   const [roomId, setRoomId] = useState('')
   const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null)
 
@@ -33,24 +34,22 @@ const App: React.FC = () => {
 
   // INITIALIZE 1 :
   useEffect(() => {
+    console.log("INITIALIZE 1");
     const initializeMediaStream = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         setLocalStream(stream);
         // if (localVideoRef.current) {
         //     localVideoRef.current.srcObject = stream;
         // }
+        initializePeerConnection(stream)
       } catch (error) {
         console.error('Error accessing webcam:', error);
       }
     };
     initializeMediaStream();
-  }, []);
 
-  // INITIALIZE 2 :
-  useEffect(() => {
-    initializePeerConnection()
-  }, [localStream]);
+  }, []);
 
   async function handleStartBroadcast(peerConnection: RTCPeerConnection) {
     const offer = await peerConnection.createOffer();
@@ -81,7 +80,7 @@ const App: React.FC = () => {
   }
 
   // INITIALIZE PEER CONNECTION WITH REMOTE STREAM :
-  const initializePeerConnection = () => {
+  const initializePeerConnection = (localStream: MediaStream) => {
     const peerConnection = new RTCPeerConnection(configurationIceServer);
 
     peerConnection.addEventListener('track', event => {
@@ -99,7 +98,7 @@ const App: React.FC = () => {
       console.log("icecandidate EVENT LISTENER");
 
       if (event.candidate) {
-        saveCallerIceCandidate(event.candidate)
+
         console.log("EVENT_ICE_CANDIDATE", event.candidate);
         try {
           const response = await fetch(serverUrl + "save-caller-candidates", {
@@ -135,18 +134,16 @@ const App: React.FC = () => {
 
   };
 
-  const saveCallerIceCandidate = async (candidate: RTCIceCandidate) => {
 
-  }
 
   const getRemoteStream = async (roomId: string) => {
-    console.log(roomId);
+
     try {
       const response = await fetch(serverUrl + "save-room-with-answer/" + roomId, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': ''
+          'Access-Control-Allow-Origin': '*'
         }
       });
       if (!response.ok) {
@@ -196,6 +193,7 @@ const App: React.FC = () => {
   return (
     <div>
       <div>
+        <h1>REGIE</h1>
         <h2>Remote Video</h2>
         <video ref={remoteVideoRef} autoPlay playsInline muted />
       </div>

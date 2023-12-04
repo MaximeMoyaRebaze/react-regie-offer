@@ -42,8 +42,16 @@ const App: React.FC = () => {
 
         socket.on('send room with answer', async (data: any) => {
           const rtcSessionDescription = new RTCSessionDescription(data.room.answer);
-          if (peerConnection)
-            await peerConnection.setRemoteDescription(rtcSessionDescription);
+
+
+          await peerConnection.setRemoteDescription(rtcSessionDescription);
+          socket.on('send caller candidate', async (data: any) => {
+
+
+            console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+          })
+
         })
 
         peerConnection.addEventListener('track', event => {
@@ -54,6 +62,28 @@ const App: React.FC = () => {
             remoteVideoRef.current.srcObject = event.streams[0];
           }
         });
+
+
+        socket.on('send stade room with answer', async (data: any) => {
+          const rtcSessionDescription = new RTCSessionDescription(data.answer);
+          await peerConnection.setRemoteDescription(rtcSessionDescription);
+
+          socket.on('send caller candidate', async (data: any) => {
+
+
+            console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data));
+          })
+        })
+
+        // peerConnection.addEventListener('track', event => {
+        //   event.streams[0].getTracks().forEach(track => {
+        //     remoteStream.addTrack(track);
+        //   });
+        //   if (remoteVideoRef.current) {
+        //     remoteVideoRef.current.srcObject = event.streams[0];
+        //   }
+        // });
 
         peerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
           if (event.candidate) {

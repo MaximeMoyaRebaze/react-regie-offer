@@ -53,10 +53,10 @@ const App: React.FC = () => {
     }
   }
 
-  async function createAnOfferAndSendLocalDescriptionAndEmitOnSocket(peerConnection: RTCPeerConnection, socket: Socket) {
+  async function createAnOfferAndSendLocalDescriptionAndEmitOnSocket(peerConnection: RTCPeerConnection, socket: Socket, emitOnSocket: string) {
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
-    socket.emit('save room with offer', { offer })
+    socket.emit(emitOnSocket, { offer })
   }
 
   async function createFanPeerConnection(socket: Socket, fanRemoteStream: MediaStream, regieLocalStream: MediaStream) {
@@ -121,7 +121,7 @@ const App: React.FC = () => {
     //   });
     // }
 
-    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket)
+    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save room with offer')
 
     // const offer = await fanPeerConnection.createOffer();
     // await fanPeerConnection.setLocalDescription(offer);
@@ -130,17 +130,53 @@ const App: React.FC = () => {
     return fanPeerConnection
   }
 
-  async function createStadePeerConnection(socket: Socket, fanRemoteStream: MediaStream, regieLocalStream: MediaStream) {
-    const stadePeerConnection = new RTCPeerConnection(configurationIceServer);
-
-    let toDelete: RTCRtpSender;
-    if (regieLocalStream) {
-      regieLocalStream.getTracks().forEach((track) => {
-        console.log("Add local stream track to STADE peer connexion", track);
-
-        toDelete = stadePeerConnection.addTrack(track, regieLocalStream);
+  function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection, stream: MediaStream) {
+    let senderToDelete: RTCRtpSender | null = null;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        console.log("Add local stream track to peer connexion", track);
+        senderToDelete = peerConnection.addTrack(track, stream);
       });
     }
+    return senderToDelete
+  }
+
+  async function createStadePeerConnection(socket: Socket, fanRemoteStream: MediaStream, regieLocalStream: MediaStream) {
+
+    const stadePeerConnection = new RTCPeerConnection(configurationIceServer);
+
+    // --------------------------------
+    // PEER CONNECTION EVENT LISTENER :
+    // --------------------------------
+
+    stadePeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+      if (event.candidate) {
+        socket.emit('save stade caller candidate', event.candidate)
+      } else {
+        console.log('ICE candidate gathering completed.');
+      }
+    });
+
+    stadePeerConnection.addEventListener('track', event => {
+      event.streams[0].getTracks().forEach(track => {
+        fanRemoteStream.addTrack(track);
+      });
+    });
+
+    // --------
+    // SOCKET :
+    // --------
+
+    const senderToDelete: RTCRtpSender | null = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection, regieLocalStream)
+
+    // let toDelete: RTCRtpSender;
+    // if (regieLocalStream) {
+    //   regieLocalStream.getTracks().forEach((track) => {
+    //     console.log("Add local stream track to STADE peer connexion", track);
+    //     toDelete = stadePeerConnection.addTrack(track, regieLocalStream);
+    //   });
+    // }
+
     socket.on('send stade room with answer', async (data: any) => {
 
       const rtcSessionDescription = new RTCSessionDescription(data);
@@ -148,7 +184,7 @@ const App: React.FC = () => {
       if (fanRemoteStream) {
         console.log("REMOTE STREAM ADDED TO STADE CONNEXION", fanRemoteStream)
         fanRemoteStream.getTracks().forEach((track) => {
-          stadePeerConnection.removeTrack(toDelete)
+          if (senderToDelete) { stadePeerConnection.removeTrack(senderToDelete) }
           stadePeerConnection.addTrack(track, fanRemoteStream);
         });
       }
@@ -161,27 +197,14 @@ const App: React.FC = () => {
       await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
 
     })
-    stadePeerConnection.addEventListener('track', event => {
-      event.streams[0].getTracks().forEach(track => {
-        fanRemoteStream.addTrack(track);
-      });
 
-    });
+    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(stadePeerConnection, socket, 'save stade room with offer')
 
-    const offerStade = await stadePeerConnection.createOffer();
+    // const offerStade = await stadePeerConnection.createOffer();
+    // await stadePeerConnection.setLocalDescription(offerStade);
+    // socket.emit('save stade room with offer', { offer: offerStade })
 
-    stadePeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
-      //console.log("ICE CANDIDATE STADE", event.candidate)
-      if (event.candidate) {
-        socket.emit('save stade caller candidate', event.candidate)
-      } else {
-        console.log('ICE candidate gathering completed.');
-      }
-    });
-
-    await stadePeerConnection.setLocalDescription(offerStade);
-
-    socket.emit('save stade room with offer', { offer: offerStade })
+    return stadePeerConnection
   }
 
   // ------------------------

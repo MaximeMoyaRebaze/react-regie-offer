@@ -19,7 +19,7 @@ async function setRemoteDescriptionToPeerConnectionFromAnswer(fanPeerConnection:
 }
 
 async function addIceCandidateToPeerConnection(fanPeerConnection: RTCPeerConnection, candidate: RTCIceCandidateInit) {
-    console.log(`Got new FAN remote ICE candidate: ${candidate}`);
+    console.log(`Got new FAN remote ICE candidate: ${JSON.stringify(candidate)}`);
     await fanPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
 }
 

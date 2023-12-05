@@ -45,7 +45,7 @@ const App: React.FC = () => {
           socket.on('send caller candidate', async (data: any) => {
 
 
-            console.log(`Got new remote ICE candidate: ${JSON.stringify(data)}`);
+
             await fanPeerConnection.addIceCandidate(new RTCIceCandidate(data));
           })
 
@@ -66,7 +66,7 @@ const App: React.FC = () => {
         fanPeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
 
           if (event.candidate) {
-            console.log(`Got new remote ICE candidate: ${JSON.stringify(event.candidate)}`);
+
             socket.emit('save caller candidate', event.candidate)
           } else {
             console.log('ICE candidate gathering completed.');
@@ -80,6 +80,7 @@ const App: React.FC = () => {
 
         const offer = await fanPeerConnection.createOffer();
         fanPeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+          console.log("ICE CANDIDATE", event.candidate)
           if (event.candidate) {
             socket.emit('save caller candidate', event.candidate)
           } else {
@@ -92,13 +93,19 @@ const App: React.FC = () => {
 
         const stadePeerConnection = new RTCPeerConnection(configurationIceServer);
         const offerStade = await stadePeerConnection.createOffer();
-        fanPeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+        stadePeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+          console.log("ICE CANDIDATE STADE", event.candidate)
           if (event.candidate) {
             socket.emit('save stade caller candidate', event.candidate)
           } else {
             console.log('ICE candidate gathering completed.');
           }
         });
+        if (localStream) {
+          localStream.getTracks().forEach((track) => {
+            stadePeerConnection.addTrack(track, localStream);
+          });
+        }
         await stadePeerConnection.setLocalDescription(offerStade);
         socket.emit('save stade room with offer', { offer: offerStade })
 

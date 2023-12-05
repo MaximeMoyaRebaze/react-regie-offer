@@ -76,15 +76,6 @@ const App: React.FC = () => {
           })
         })
 
-        peerConnection.addEventListener('track', event => {
-          event.streams[0].getTracks().forEach(track => {
-            remoteStream.addTrack(track);
-          });
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-          }
-        });
-
         peerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
           if (event.candidate) {
             socket.emit('save caller candidate', event.candidate)

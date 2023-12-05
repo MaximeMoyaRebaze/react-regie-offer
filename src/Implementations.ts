@@ -58,7 +58,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
 
     fanPeerConnection.addEventListener('icecandidate', (event: RTCPeerConnectionIceEvent) => {
         if (event.candidate) {
-            socket.emit('save caller candidate', event.candidate)
+            socket.emit('save regie caller candidate for fan', event.candidate)
         } else {
             console.log('ICE candidate gathering completed.');
         }
@@ -93,7 +93,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
 
     addTrackToPeerConnectionFromAStream(fanPeerConnection, regieLocalStream)
 
-    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save room with offer')
+    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save regie room with offer for fan')
 
     return fanPeerConnection
 }
@@ -108,7 +108,7 @@ export async function createStadePeerConnection(socket: Socket, fanRemoteStream:
 
     stadePeerConnection.addEventListener('icecandidate', (event: RTCPeerConnectionIceEvent) => {
         if (event.candidate) {
-            socket.emit('save stade caller candidate', event.candidate)
+            socket.emit('save regie caller candidate for stade', event.candidate)
         } else {
             console.log('ICE candidate gathering completed.');
         }
@@ -151,7 +151,7 @@ export async function createStadePeerConnection(socket: Socket, fanRemoteStream:
     // OTHER :
     // -------
 
-    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(stadePeerConnection, socket, 'save stade room with offer')
+    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(stadePeerConnection, socket, 'save regie room with offer for stade')
 
     return stadePeerConnection
 }

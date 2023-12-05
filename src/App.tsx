@@ -51,6 +51,7 @@ const App: React.FC = () => {
 
         })
 
+
         fanPeerConnection.addEventListener('track', event => {
           event.streams[0].getTracks().forEach(track => {
             remoteStream.addTrack(track);
@@ -63,15 +64,6 @@ const App: React.FC = () => {
 
 
 
-        fanPeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
-
-          if (event.candidate) {
-
-            socket.emit('save caller candidate', event.candidate)
-          } else {
-            console.log('ICE candidate gathering completed.');
-          }
-        });
         if (localStream) {
           localStream.getTracks().forEach((track) => {
             fanPeerConnection.addTrack(track, localStream);
@@ -79,6 +71,7 @@ const App: React.FC = () => {
         }
 
         const offer = await fanPeerConnection.createOffer();
+
         fanPeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
           console.log("ICE CANDIDATE", event.candidate)
           if (event.candidate) {
@@ -87,27 +80,13 @@ const App: React.FC = () => {
             console.log('ICE candidate gathering completed.');
           }
         });
+
         await fanPeerConnection.setLocalDescription(offer);
+
         socket.emit('save room with offer', { offer })
 
 
         const stadePeerConnection = new RTCPeerConnection(configurationIceServer);
-        const offerStade = await stadePeerConnection.createOffer();
-        stadePeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
-          console.log("ICE CANDIDATE STADE", event.candidate)
-          if (event.candidate) {
-            socket.emit('save stade caller candidate', event.candidate)
-          } else {
-            console.log('ICE candidate gathering completed.');
-          }
-        });
-        if (localStream) {
-          localStream.getTracks().forEach((track) => {
-            stadePeerConnection.addTrack(track, localStream);
-          });
-        }
-        await stadePeerConnection.setLocalDescription(offerStade);
-        socket.emit('save stade room with offer', { offer: offerStade })
 
 
 
@@ -119,21 +98,37 @@ const App: React.FC = () => {
             console.log("Add remote stream track to peer connexion", track);
             stadePeerConnection.addTrack(track, remoteStream);
           });
-
-
           await stadePeerConnection.setRemoteDescription(rtcSessionDescription);
 
-
-
-          // socket.on('send stade caller candidate', async (data: any) => {
-
-
-          //   console.log(`Got new remote STADE ICE candidate: ${JSON.stringify(data)}`);
-          //   await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data));
-          // })
-
-
         })
+
+        const offerStade = await stadePeerConnection.createOffer();
+
+        stadePeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+          console.log("ICE CANDIDATE STADE", event.candidate)
+          if (event.candidate) {
+            socket.emit('save stade caller candidate', event.candidate)
+          } else {
+            console.log('ICE candidate gathering completed.');
+          }
+        });
+
+        if (remoteStream) {
+          remoteStream.getTracks().forEach((track) => {
+            stadePeerConnection.addTrack(track, remoteStream);
+          });
+        }
+
+
+
+
+        await stadePeerConnection.setLocalDescription(offerStade);
+
+        socket.emit('save stade room with offer', { offer: offerStade })
+
+
+
+
 
 
       } catch (error) {

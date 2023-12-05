@@ -1,9 +1,11 @@
 import './App.css'
-import io from 'socket.io-client';
+
 import React, { useEffect, useRef } from 'react';
+import io from 'socket.io-client';
+
 import * as Implementations from './Implementations'
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
 
   // BACKEND :
   const serverUrlSocket = 'http://localhost:3001/regie'
@@ -36,5 +38,3 @@ const App: React.FC = () => {
     </div>
   );
 };
-
-export default App;

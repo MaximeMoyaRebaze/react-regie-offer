@@ -1,4 +1,4 @@
-import { Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 // TURN ICE SERVER CONFIG :
 const configurationIceServer = {
@@ -56,7 +56,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     // PEER CONNECTION EVENT LISTENER :
     // --------------------------------
 
-    fanPeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+    fanPeerConnection.addEventListener('icecandidate', (event: RTCPeerConnectionIceEvent) => {
         if (event.candidate) {
             socket.emit('save caller candidate', event.candidate)
         } else {
@@ -77,13 +77,13 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     // SOCKET :
     // --------
 
-    socket.on('send room with answer', async (data: any) => {
-        await setRemoteDescriptionToPeerConnectionFromAnswer(fanPeerConnection, data.room.answer)
-        socket.on('send caller candidate', async (data: any) => {
-            await addIceCandidateToPeerConnection(fanPeerConnection, data)
-        })
+    socket.on('send fan room with answer', async (data: { answer: RTCSessionDescriptionInit }) => {
+        await setRemoteDescriptionToPeerConnectionFromAnswer(fanPeerConnection, data.answer)
+        // socket.on('send fan caller candidate', async (data: any) => {
+        //     await addIceCandidateToPeerConnection(fanPeerConnection, data)
+        // })
     })
-    socket.on('send callee candidate', async (data: any) => {
+    socket.on('send fan callee candidate', async (data: { candidate: RTCIceCandidateInit }) => {
         await addIceCandidateToPeerConnection(fanPeerConnection, data.candidate)
     })
 
@@ -106,7 +106,7 @@ export async function createStadePeerConnection(socket: Socket, fanRemoteStream:
     // PEER CONNECTION EVENT LISTENER :
     // --------------------------------
 
-    stadePeerConnection.addEventListener('icecandidate', async (event: RTCPeerConnectionIceEvent) => {
+    stadePeerConnection.addEventListener('icecandidate', (event: RTCPeerConnectionIceEvent) => {
         if (event.candidate) {
             socket.emit('save stade caller candidate', event.candidate)
         } else {
@@ -126,9 +126,9 @@ export async function createStadePeerConnection(socket: Socket, fanRemoteStream:
 
     const senderToDelete: RTCRtpSender | null = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection, regieLocalStream)
 
-    socket.on('send stade room with answer', async (data: any) => {
+    socket.on('send stade room with answer', async (data: { answer: RTCSessionDescriptionInit }) => {
 
-        const rtcSessionDescription = new RTCSessionDescription(data);
+        const rtcSessionDescription = new RTCSessionDescription(data.answer);
         console.log('Connection to STADE', stadePeerConnection.currentRemoteDescription)
         if (fanRemoteStream) {
             console.log("REMOTE STREAM ADDED TO STADE CONNEXION", fanRemoteStream)
@@ -141,7 +141,7 @@ export async function createStadePeerConnection(socket: Socket, fanRemoteStream:
 
     })
 
-    socket.on('send stade callee candidate', async (data: any) => {
+    socket.on('send stade callee candidate', async (data: { candidate: RTCIceCandidateInit }) => {
         console.log(`Got new stade remote ICE candidate: ${JSON.stringify(data)}`);
         await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
 

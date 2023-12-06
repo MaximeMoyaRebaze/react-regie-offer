@@ -14,8 +14,9 @@ export const App: React.FC = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef2 = useRef<HTMLVideoElement>(null);
   const [stadePeerConnection, setStadePeerConnection] = React.useState<RTCPeerConnection | null>(null);
-  const [fanRemoteStreamId1, setFanRemoteStreamId1] = React.useState<RTCRtpSender[]>([]);
-  const [fanRemoteStreamId2, setFanRemoteStreamId2] = React.useState<RTCRtpSender[]>([]);
+  const [fanRemote1, setFanRemote1] = React.useState<MediaStream | null>(null);
+  const [fanRemote2, setFanRemote2] = React.useState<MediaStream | null>(null);
+
 
   const fanRemoteStream = new MediaStream()
   const fanRemoteStream2 = new MediaStream()
@@ -28,9 +29,11 @@ export const App: React.FC = () => {
 
       const regieLocalStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
 
-      setFanRemoteStreamId1(await Implementations.createFanPeerConnection(socket, fanRemoteStream, regieLocalStream, remoteVideoRef, "1"))
-      setFanRemoteStreamId2(await Implementations.createFanPeerConnection(socket, fanRemoteStream2, regieLocalStream, remoteVideoRef2, "2"))
-
+      const remoteStream1 = await Implementations.createFanPeerConnection(socket, fanRemoteStream, regieLocalStream, remoteVideoRef, "1")
+      const remoteStream2 = await Implementations.createFanPeerConnection(socket, fanRemoteStream2, regieLocalStream, remoteVideoRef2, "2")
+      console.log("remoteStream2 : ", remoteStream2)
+      setFanRemote2(remoteStream2)
+      setFanRemote1(remoteStream1)
       await Implementations.createStadePeerConnection(stadePeerConnection, socket, fanRemoteStream, regieLocalStream)
     };
 
@@ -46,26 +49,21 @@ export const App: React.FC = () => {
         <h3>Fan 1</h3>
         <video ref={remoteVideoRef} autoPlay playsInline muted />
         {stadePeerConnection && <button onClick={() => {
+          stadePeerConnection.getSenders().forEach((sender) => {
 
-          fanRemoteStreamId2.forEach((track) => {
-            stadePeerConnection.removeTrack(track);
+            sender.replaceTrack(fanRemote1.getTracks()[0])
           })
-          fanRemoteStream.getTracks().forEach((track) => {
 
-            stadePeerConnection.addTrack(track, fanRemoteStream);
-          });
+
         }}>Select fan 1</button>}
         <h3>Fan 2</h3>
         <video ref={remoteVideoRef2} autoPlay playsInline muted />
         {stadePeerConnection && <button onClick={() => {
 
-          fanRemoteStreamId1.forEach((track) => {
-            stadePeerConnection.removeTrack(track);
-          })
-          fanRemoteStream2.getTracks().forEach((track) => {
+          stadePeerConnection.getSenders().forEach((sender) => {
 
-            stadePeerConnection.addTrack(track, fanRemoteStream2);
-          });
+            sender.replaceTrack(fanRemote2.getTracks()[0])
+          })
         }}>Select fan 2</button>}
       </div>
     </div>

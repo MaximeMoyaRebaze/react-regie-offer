@@ -67,7 +67,9 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
 
     fanPeerConnection.addEventListener('track', event => {
         event.streams[0].getTracks().forEach(track => {
+
             fanRemoteStream.addTrack(track);
+            console.log(`REMOTE STREAM ADDED TO FAN CONNEXION for fan ${id}`, fanRemoteStream.getTracks())
         });
         if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
@@ -95,11 +97,10 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     // OTHER :
     // --------
 
-    const rTCRtpSender: RTCRtpSender[] = addTrackToPeerConnectionFromAStream(fanPeerConnection, regieLocalStream)
+    addTrackToPeerConnectionFromAStream(fanPeerConnection, regieLocalStream)
 
     await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save regie room with offer for fan', id)
-
-    return rTCRtpSender
+    return fanRemoteStream
 }
 
 export async function createStadePeerConnection(stadePeerConnection: RTCPeerConnection, socket: Socket, fanRemoteStream: MediaStream, regieLocalStream: MediaStream) {

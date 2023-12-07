@@ -52,7 +52,7 @@ export const App: React.FC = () => {
 
 
 
-      await Implementations.createStadePeerConnection(stadePeerConnection, socket, remoteStreams[0].mediaStream)
+      await Implementations.createStadePeerConnection(stadePeerConnection, socket)
     };
 
     initialize();

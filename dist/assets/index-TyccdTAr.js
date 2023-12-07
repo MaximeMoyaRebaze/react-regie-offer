@@ -4469,13 +4469,25 @@ async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerCo
   await peerConnection.setLocalDescription(offer);
   socket.emit(socketMessage, { room: { offer }, regieRoomId });
 }
-async function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection) {
-  let senderToDelete = null;
-  const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-  localStream.getVideoTracks().map((track) => {
-    senderToDelete = peerConnection.addTrack(track, new MediaStream());
-  });
-  return senderToDelete;
+function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection) {
+  const canvas = document.createElement("canvas");
+  console.log("CANVAS", canvas);
+  canvas.width = 640;
+  canvas.height = 480;
+  const ctx = canvas.getContext("2d");
+  console.log("CTX", ctx);
+  if (ctx) {
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
+  console.log("BLANK VIDEO TRACK", blankVideoTrack);
+  const mediaStream = new MediaStream();
+  console.log("EMPTY MEDIA STREAM", mediaStream);
+  mediaStream.addTrack(blankVideoTrack);
+  console.log("MEDIA STREAM", mediaStream);
+  peerConnection.addTrack(blankVideoTrack, mediaStream);
+  return mediaStream;
 }
 async function createFanPeerConnection(socket, fanRemoteStream, remoteVideoRef, id) {
   const fanPeerConnection = new RTCPeerConnection(configurationIceServer);
@@ -4483,20 +4495,18 @@ async function createFanPeerConnection(socket, fanRemoteStream, remoteVideoRef, 
     if (event.candidate) {
       socket.emit("save regie caller candidate for fan", { candidate: event.candidate, regieRoomId: id });
     } else {
-      console.log("ICE candidate gathering completed.");
+      console.log("FAN ICE candidate gathering completed.");
     }
   });
   fanPeerConnection.addEventListener("track", (event) => {
     event.streams[0].getTracks().forEach((track) => {
       fanRemoteStream.addTrack(track);
-      console.log(`REMOTE STREAM ADDED TO FAN CONNEXION for fan ${id}`, fanRemoteStream.getTracks());
     });
     if (remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = event.streams[0];
     }
   });
   socket.on("send fan room with answer", async (data) => {
-    console.log("Connection to FANNNNNNNN", data);
     if (data.regieRoomId !== id)
       return;
     await setRemoteDescriptionToPeerConnectionFromAnswer(fanPeerConnection, data.room.answer);
@@ -4509,36 +4519,25 @@ async function createFanPeerConnection(socket, fanRemoteStream, remoteVideoRef, 
   await createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, "save regie room with offer for fan", id);
   return fanRemoteStream;
 }
-async function createStadePeerConnection(stadePeerConnection, socket, fanRemoteStream) {
+async function createStadePeerConnection(stadePeerConnection, socket) {
   stadePeerConnection.addEventListener("icecandidate", (event) => {
     if (event.candidate) {
       socket.emit("save regie caller candidate for stade", event.candidate);
     } else {
-      console.log("ICE candidate gathering completed.");
+      console.log("FAN ICE candidate gathering completed.");
     }
   });
+  const mediaStream = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection);
   stadePeerConnection.addEventListener("track", (event) => {
     event.streams[0].getTracks().forEach((track) => {
-      fanRemoteStream.addTrack(track);
+      mediaStream.addTrack(track);
     });
   });
-  const senderToDelete = await createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection);
   socket.on("send stade room with answer", async (data) => {
     const rtcSessionDescription = new RTCSessionDescription(data.answer);
-    console.log("Connection to STADE", stadePeerConnection.currentRemoteDescription);
-    if (fanRemoteStream) {
-      console.log("REMOTE STREAM ADDED TO STADE CONNEXION", fanRemoteStream);
-      fanRemoteStream.getTracks().forEach((track) => {
-        if (senderToDelete) {
-          stadePeerConnection.removeTrack(senderToDelete);
-        }
-        stadePeerConnection.addTrack(track, fanRemoteStream);
-      });
-    }
     await stadePeerConnection.setRemoteDescription(rtcSessionDescription);
   });
   socket.on("send stade callee candidate", async (data) => {
-    console.log(`Got new stade remote ICE candidate: ${JSON.stringify(data)}`);
     await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
   });
   stadePeerConnection.addTransceiver("video", { direction: "sendonly" });
@@ -4563,7 +4562,7 @@ const App = () => {
           return { mediaStream: remoteStream, remoteVideoRef };
         })
       ));
-      await createStadePeerConnection(stadePeerConnection2, socket, remoteStreams[0].mediaStream);
+      await createStadePeerConnection(stadePeerConnection2, socket);
     };
     initialize();
   }, []);

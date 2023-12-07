@@ -32,31 +32,52 @@ async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerCo
     socket.emit(socketMessage, { room: { offer }, regieRoomId })
 }
 
-async function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection): Promise<RTCRtpSender | null> {
+function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection): MediaStream {
 
-    // const canvas = document.createElement('canvas');
-    // canvas.width = 640; // Set width as needed
-    // canvas.height = 480;
-    // const ctx = canvas.getContext('2d');
-    // if (ctx) {
-    //     ctx.fillStyle = 'black'; // Set the color to black or any other color
-    //     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // }
+
+
+    // // Replace the original video track with the blank video track
+    // let senderToDelete: RTCRtpSender | null = null
+    // const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+
+
+    // localStream.getVideoTracks().map(track => {
+    //     senderToDelete = peerConnection.addTrack(track, new MediaStream())
+
+
+    // })
+    // return senderToDelete
+
+
+    const canvas = document.createElement('canvas');
+    console.log('CANVAS', canvas)
+    canvas.width = 640; // Set width as needed
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+
+    console.log('CTX', ctx)
+
+
+    if (ctx) {
+        ctx.fillStyle = 'black'; // Set the color to black or any other color
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Create a blank video track using the canvas as the source
-    // const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
 
+    const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
+    console.log('BLANK VIDEO TRACK', blankVideoTrack)
     // Replace the original video track with the blank video track
-    let senderToDelete: RTCRtpSender | null = null
-    const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
 
 
-    localStream.getVideoTracks().map(track => {
-        senderToDelete = peerConnection.addTrack(track, new MediaStream())
+    const mediaStream = new MediaStream()
+    console.log('EMPTY MEDIA STREAM', mediaStream)
+    mediaStream.addTrack(blankVideoTrack)
+    console.log('MEDIA STREAM', mediaStream)
 
+    peerConnection.addTrack(blankVideoTrack, mediaStream);
 
-    })
-    return senderToDelete
+    return mediaStream
 }
 
 export async function createFanPeerConnection(socket: Socket, fanRemoteStream: MediaStream, remoteVideoRef: React.RefObject<HTMLVideoElement>, id: string) {
@@ -72,7 +93,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
             // console.log(`Got new FAN local ICE candidate: ${JSON.stringify(event.candidate)}`);
             socket.emit('save regie caller candidate for fan', { candidate: event.candidate, regieRoomId: id })
         } else {
-            console.log('ICE candidate gathering completed.');
+            console.log('FAN ICE candidate gathering completed.');
         }
     });
 
@@ -80,7 +101,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
         event.streams[0].getTracks().forEach(track => {
 
             fanRemoteStream.addTrack(track);
-            console.log(`REMOTE STREAM ADDED TO FAN CONNEXION for fan ${id}`, fanRemoteStream.getTracks())
+
         });
         if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
@@ -92,7 +113,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     // --------
 
     socket.on('send fan room with answer', async (data: { room: { answer: RTCSessionDescriptionInit }, regieRoomId: string }) => {
-        console.log('Connection to FANNNNNNNN', data)
+
         if (data.regieRoomId !== id) return
         await setRemoteDescriptionToPeerConnectionFromAnswer(fanPeerConnection, data.room.answer)
 
@@ -112,7 +133,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     return fanRemoteStream
 }
 
-export async function createStadePeerConnection(stadePeerConnection: RTCPeerConnection, socket: Socket, fanRemoteStream: MediaStream) {
+export async function createStadePeerConnection(stadePeerConnection: RTCPeerConnection, socket: Socket) {
 
 
 
@@ -124,13 +145,13 @@ export async function createStadePeerConnection(stadePeerConnection: RTCPeerConn
         if (event.candidate) {
             socket.emit('save regie caller candidate for stade', event.candidate)
         } else {
-            console.log('ICE candidate gathering completed.');
+            console.log('FAN ICE candidate gathering completed.');
         }
     });
-
+    const mediaStream = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection)
     stadePeerConnection.addEventListener('track', event => {
         event.streams[0].getTracks().forEach(track => {
-            fanRemoteStream.addTrack(track);
+            mediaStream.addTrack(track);
         });
     });
 
@@ -138,25 +159,28 @@ export async function createStadePeerConnection(stadePeerConnection: RTCPeerConn
     // SOCKET :
     // --------
 
-    const senderToDelete: RTCRtpSender | null = await createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection)
-
+    // console.log('SENDER TO DELETE', senderToDelete)
     socket.on('send stade room with answer', async (data: { answer: RTCSessionDescriptionInit }) => {
 
         const rtcSessionDescription = new RTCSessionDescription(data.answer);
-        console.log('Connection to STADE', stadePeerConnection.currentRemoteDescription)
-        if (fanRemoteStream) {
-            console.log("REMOTE STREAM ADDED TO STADE CONNEXION", fanRemoteStream)
-            fanRemoteStream.getTracks().forEach((track) => {
-                if (senderToDelete) { stadePeerConnection.removeTrack(senderToDelete) }
-                stadePeerConnection.addTrack(track, fanRemoteStream);
-            });
-        }
+        // console.log('Connection to STADE', stadePeerConnection)
+        // TO DELETE
+        // if (fanRemoteStream) {
+        //     console.log("REMOTE STREAM ADDED TO STADE CONNEXION", fanRemoteStream)
+        //     fanRemoteStream.getTracks().forEach((track) => {
+        //         if (senderToDelete) {
+        //             console.log('SENDER TO DELETE', senderToDelete)
+        //             stadePeerConnection.removeTrack(senderToDelete)
+        //         }
+        //         stadePeerConnection.addTrack(track, fanRemoteStream);
+        //     });
+        // }
         await stadePeerConnection.setRemoteDescription(rtcSessionDescription);
 
     })
 
     socket.on('send stade callee candidate', async (data: { candidate: RTCIceCandidateInit }) => {
-        console.log(`Got new stade remote ICE candidate: ${JSON.stringify(data)}`);
+        // console.log(`Got new stade remote ICE candidate: ${JSON.stringify(data)}`);
         await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
 
     })

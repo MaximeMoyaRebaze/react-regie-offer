@@ -10498,25 +10498,13 @@ async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerCo
   await peerConnection.setLocalDescription(offer);
   socket.emit(socketMessage, { room: { offer }, regieRoomId });
 }
-function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection) {
-  const canvas = document.createElement("canvas");
-  console.log("CANVAS", canvas);
-  canvas.width = 640;
-  canvas.height = 480;
-  const ctx = canvas.getContext("2d");
-  console.log("CTX", ctx);
-  if (ctx) {
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
-  console.log("BLANK VIDEO TRACK", blankVideoTrack);
-  const mediaStream = new MediaStream();
-  console.log("EMPTY MEDIA STREAM", mediaStream);
-  mediaStream.addTrack(blankVideoTrack);
-  console.log("MEDIA STREAM", mediaStream);
-  peerConnection.addTrack(blankVideoTrack, mediaStream);
-  return mediaStream;
+async function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection) {
+  let senderToDelete = null;
+  const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  localStream.getVideoTracks().map((track) => {
+    senderToDelete = peerConnection.addTrack(track, new MediaStream());
+  });
+  return { localStream, senderToDelete };
 }
 async function createFanPeerConnection(socket, fanRemoteStream, remoteVideoRef, id) {
   const fanPeerConnection = new RTCPeerConnection(configurationIceServer);
@@ -10556,10 +10544,10 @@ async function createStadePeerConnection(stadePeerConnection, socket) {
       console.log("FAN ICE candidate gathering completed.");
     }
   });
-  const mediaStream = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection);
+  const mediaStream = await createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection);
   stadePeerConnection.addEventListener("track", (event) => {
     event.streams[0].getTracks().forEach((track) => {
-      mediaStream.addTrack(track);
+      mediaStream.localStream.addTrack(track);
     });
   });
   socket.on("send stade room with answer", async (data) => {

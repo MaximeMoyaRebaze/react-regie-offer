@@ -32,52 +32,52 @@ async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerCo
     socket.emit(socketMessage, { room: { offer }, regieRoomId })
 }
 
-function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection): MediaStream {
+async function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection): Promise<{ localStream: MediaStream, senderToDelete: RTCRtpSender | null }> {
 
 
 
-    // // Replace the original video track with the blank video track
-    // let senderToDelete: RTCRtpSender | null = null
-    // const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-
-
-    // localStream.getVideoTracks().map(track => {
-    //     senderToDelete = peerConnection.addTrack(track, new MediaStream())
-
-
-    // })
-    // return senderToDelete
-
-
-    const canvas = document.createElement('canvas');
-    console.log('CANVAS', canvas)
-    canvas.width = 640; // Set width as needed
-    canvas.height = 480;
-    const ctx = canvas.getContext('2d');
-
-    console.log('CTX', ctx)
-
-
-    if (ctx) {
-        ctx.fillStyle = 'black'; // Set the color to black or any other color
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    // Create a blank video track using the canvas as the source
-
-    const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
-    console.log('BLANK VIDEO TRACK', blankVideoTrack)
     // Replace the original video track with the blank video track
+    let senderToDelete: RTCRtpSender | null = null
+    const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
 
 
-    const mediaStream = new MediaStream()
-    console.log('EMPTY MEDIA STREAM', mediaStream)
-    mediaStream.addTrack(blankVideoTrack)
-    console.log('MEDIA STREAM', mediaStream)
+    localStream.getVideoTracks().map(track => {
+        senderToDelete = peerConnection.addTrack(track, new MediaStream())
 
-    peerConnection.addTrack(blankVideoTrack, mediaStream);
 
-    return mediaStream
+    })
+    return { localStream, senderToDelete }
+
+
+    // const canvas = document.createElement('canvas');
+    // console.log('CANVAS', canvas)
+    // canvas.width = 640; // Set width as needed
+    // canvas.height = 480;
+    // const ctx = canvas.getContext('2d');
+
+    // console.log('CTX', ctx)
+
+
+    // if (ctx) {
+    //     ctx.fillStyle = 'black'; // Set the color to black or any other color
+    //     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // }
+
+    // // Create a blank video track using the canvas as the source
+
+    // const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
+    // console.log('BLANK VIDEO TRACK', blankVideoTrack)
+    // // Replace the original video track with the blank video track
+
+
+    // const mediaStream = new MediaStream()
+    // console.log('EMPTY MEDIA STREAM', mediaStream)
+    // mediaStream.addTrack(blankVideoTrack)
+    // console.log('MEDIA STREAM', mediaStream)
+
+    // peerConnection.addTrack(blankVideoTrack, mediaStream);
+
+    // return mediaStream
 }
 
 export async function createFanPeerConnection(socket: Socket, fanRemoteStream: MediaStream, remoteVideoRef: React.RefObject<HTMLVideoElement>, id: string) {
@@ -148,10 +148,10 @@ export async function createStadePeerConnection(stadePeerConnection: RTCPeerConn
             console.log('FAN ICE candidate gathering completed.');
         }
     });
-    const mediaStream = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection)
+    const mediaStream = await createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection)
     stadePeerConnection.addEventListener('track', event => {
         event.streams[0].getTracks().forEach(track => {
-            mediaStream.addTrack(track);
+            mediaStream.localStream.addTrack(track);
         });
     });
 

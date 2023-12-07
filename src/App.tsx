@@ -1,7 +1,9 @@
 import './App.css'
 
+import type { RefObject } from 'react';
 import React, { useEffect, useRef } from 'react';
 import io from 'socket.io-client';
+import { ulid } from 'ulid'
 
 import * as Implementations from './Implementations'
 
@@ -11,15 +13,14 @@ export const App: React.FC = () => {
   const serverUrlSocket = 'http://localhost:3001/regie'
 
   // REF :
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef2 = useRef<HTMLVideoElement>(null);
+
   const [stadePeerConnection, setStadePeerConnection] = React.useState<RTCPeerConnection | null>(null);
-  const [fanRemote1, setFanRemote1] = React.useState<MediaStream | null>(null);
-  const [fanRemote2, setFanRemote2] = React.useState<MediaStream | null>(null);
+
+  const [remoteStreams, setRemoteStreams] = React.useState<{ mediaStream: MediaStream; remoteVideoRef: RefObject<HTMLVideoElement>; }[]>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].map(() => ({ mediaStream: new MediaStream(), remoteVideoRef: useRef<HTMLVideoElement>(null) })))
 
 
-  const fanRemoteStream = new MediaStream()
-  const fanRemoteStream2 = new MediaStream()
+
+
   // INITIALIZE :
   useEffect(() => {
     const stadePeerConnection = new RTCPeerConnection(Implementations.configurationIceServer);
@@ -29,12 +30,28 @@ export const App: React.FC = () => {
 
       const regieLocalStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
 
-      const remoteStream1 = await Implementations.createFanPeerConnection(socket, fanRemoteStream, regieLocalStream, remoteVideoRef, "1")
-      const remoteStream2 = await Implementations.createFanPeerConnection(socket, fanRemoteStream2, regieLocalStream, remoteVideoRef2, "2")
-      console.log("remoteStream2 : ", remoteStream2)
-      setFanRemote2(remoteStream2)
-      setFanRemote1(remoteStream1)
-      await Implementations.createStadePeerConnection(stadePeerConnection, socket, fanRemoteStream, regieLocalStream)
+
+
+
+
+
+
+      setRemoteStreams(await Promise.all(
+
+        remoteStreams.map(async ({ mediaStream, remoteVideoRef }) => {
+
+
+
+
+          const remoteStream = await Implementations.createFanPeerConnection(socket, mediaStream, remoteVideoRef, ulid())
+          return { mediaStream: remoteStream, remoteVideoRef }
+        })))
+
+
+
+
+
+      await Implementations.createStadePeerConnection(stadePeerConnection, socket, remoteStreams[0].mediaStream, regieLocalStream)
     };
 
     initialize();
@@ -46,25 +63,23 @@ export const App: React.FC = () => {
       <div>
         <h1>REGIE</h1>
         <h2>Remote Video</h2>
-        <h3>Fan 1</h3>
-        <video ref={remoteVideoRef} autoPlay playsInline muted />
-        {stadePeerConnection && <button onClick={() => {
-          stadePeerConnection.getSenders().forEach((sender) => {
+        {
+          remoteStreams.map(({ mediaStream, remoteVideoRef }, index) => (
+            <div key={index}>
+              <h3>Fan {index}</h3>
+              <video ref={remoteVideoRef} autoPlay playsInline muted />
+              {stadePeerConnection && mediaStream && <button onClick={() => {
 
-            sender.replaceTrack(fanRemote1.getTracks()[0])
-          })
+                stadePeerConnection.getSenders().forEach((sender) => {
+                  console.log('sender', sender)
+                  console.log('mediaStream', mediaStream.getTracks()[0])
+                  sender.replaceTrack(mediaStream.getTracks()[0])
+                })
+              }}>Select fan {index}</button>}
+            </div>
+          ))
+        }
 
-
-        }}>Select fan 1</button>}
-        <h3>Fan 2</h3>
-        <video ref={remoteVideoRef2} autoPlay playsInline muted />
-        {stadePeerConnection && <button onClick={() => {
-
-          stadePeerConnection.getSenders().forEach((sender) => {
-
-            sender.replaceTrack(fanRemote2.getTracks()[0])
-          })
-        }}>Select fan 2</button>}
       </div>
     </div>
   );

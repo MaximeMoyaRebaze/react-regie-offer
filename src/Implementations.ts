@@ -1,3 +1,4 @@
+import { empty } from 'effect/Order';
 import type { Socket } from 'socket.io-client';
 
 // TURN ICE SERVER CONFIG :
@@ -23,15 +24,14 @@ async function addIceCandidateToPeerConnection(fanPeerConnection: RTCPeerConnect
     await fanPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
 }
 
-function addTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection, stream: MediaStream): RTCRtpSender[] {
+// function addTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection): RTCRtpSender[] {
 
-    return stream.getTracks().map((track) => {
-        return peerConnection.addTrack(track, stream);
-    });
+//     return stream.getTracks().map((track) => peerConnection.addTrack(track, stream));
 
-}
+// }
 
-async function createAnOfferAndSendLocalDescriptionAndEmitOnSocket(peerConnection: RTCPeerConnection, socket: Socket, socketMessage: string, regieRoomId: string) {
+async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerConnection: RTCPeerConnection, socket: Socket, socketMessage: string, regieRoomId: string) {
+    peerConnection.addTransceiver('video', { direction: 'recvonly' });
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     socket.emit(socketMessage, { room: { offer }, regieRoomId })
@@ -48,7 +48,7 @@ function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnecti
     return senderToDelete
 }
 
-export async function createFanPeerConnection(socket: Socket, fanRemoteStream: MediaStream, regieLocalStream: MediaStream, remoteVideoRef: React.RefObject<HTMLVideoElement>, id: string) {
+export async function createFanPeerConnection(socket: Socket, fanRemoteStream: MediaStream, remoteVideoRef: React.RefObject<HTMLVideoElement>, id: string) {
 
     const fanPeerConnection = new RTCPeerConnection(configurationIceServer);
 
@@ -97,9 +97,9 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     // OTHER :
     // --------
 
-    addTrackToPeerConnectionFromAStream(fanPeerConnection, regieLocalStream)
+    // addTrackToPeerConnectionFromAStream(fanPeerConnection)
 
-    await createAnOfferAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save regie room with offer for fan', id)
+    await createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save regie room with offer for fan', id)
     return fanRemoteStream
 }
 
@@ -151,10 +151,15 @@ export async function createStadePeerConnection(stadePeerConnection: RTCPeerConn
         await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
 
     })
+    const emptyStream = new MediaStream();
+    emptyStream.getTracks().forEach((track) => {
+        stadePeerConnection.addTrack(track, emptyStream);
+    })
 
     // -------
     // OTHER :
     // -------
+    stadePeerConnection.addTransceiver('video', { direction: 'sendonly' });
     const offer = await stadePeerConnection.createOffer();
     await stadePeerConnection.setLocalDescription(offer);
     socket.emit('save regie room with offer for stade', { offer })

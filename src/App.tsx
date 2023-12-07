@@ -1,5 +1,6 @@
 import './App.css'
 
+import { Box, Button, SimpleGrid, VStack } from '@chakra-ui/react';
 import type { RefObject } from 'react';
 import React, { useEffect, useRef } from 'react';
 import io from 'socket.io-client';
@@ -62,24 +63,24 @@ export const App: React.FC = () => {
   return (
     <div>
       <div>
-        <h1>REGIE</h1>
-        <h2>Remote Video</h2>
-        {
-          remoteStreams.map(({ mediaStream, remoteVideoRef }, index) => (
-            <div key={index}>
-              <h3>Fan {index}</h3>
-              <video ref={remoteVideoRef} autoPlay playsInline muted />
-              {stadePeerConnection && mediaStream && <button onClick={() => {
+        <h2>MODÉRATEUR</h2>
+        <h3>Remote Video</h3>
+        <SimpleGrid columns={8} spacing={"210px"}>
+          {
+            remoteStreams.map(({ mediaStream, remoteVideoRef }, index) => (
+              <VStack key={index} >
+                <h3>Fan {1 + index}</h3>
+                <Box >
+                  <video ref={remoteVideoRef} width="200" height={"200"} autoPlay playsInline muted /></Box>
+                {stadePeerConnection && mediaStream && <Button onClick={() => {
 
-                stadePeerConnection.getSenders().forEach((sender) => {
-                  console.log('sender', sender)
-                  console.log('mediaStream', mediaStream.getTracks()[0])
-                  sender.replaceTrack(mediaStream.getTracks()[0])
-                })
-              }}>Select fan {index}</button>}
-            </div>
-          ))
-        }
+                  stadePeerConnection.getSenders().forEach((sender) => {
+                    sender.replaceTrack(mediaStream.getTracks()[0])
+                  })
+                }}>Select fan {1 + index}</Button>}
+              </VStack>
+            ))
+          }</SimpleGrid>
 
       </div>
     </div>

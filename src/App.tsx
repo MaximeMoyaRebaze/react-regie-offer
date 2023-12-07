@@ -10,7 +10,8 @@ import * as Implementations from './Implementations'
 export const App: React.FC = () => {
 
   // BACKEND :
-  const serverUrlSocket = 'http://localhost:3001/regie'
+  // const serverUrlSocket = 'http://localhost:3001/regie'
+  const serverUrlSocket = 'https://back-end-fan-cam-e765fca54737.herokuapp.com/regie'
 
   // REF :
 

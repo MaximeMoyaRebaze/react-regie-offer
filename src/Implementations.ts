@@ -63,7 +63,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
 
     fanPeerConnection.addEventListener('icecandidate', (event: RTCPeerConnectionIceEvent) => {
         if (event.candidate) {
-            console.log(`Got new FAN local ICE candidate: ${JSON.stringify(event.candidate)}`);
+            // console.log(`Got new FAN local ICE candidate: ${JSON.stringify(event.candidate)}`);
             socket.emit('save regie caller candidate for fan', { candidate: event.candidate, regieRoomId: id })
         } else {
             console.log('ICE candidate gathering completed.');

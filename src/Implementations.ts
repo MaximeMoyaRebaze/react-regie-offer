@@ -1,4 +1,3 @@
-import { empty } from 'effect/Order';
 import type { Socket } from 'socket.io-client';
 
 // TURN ICE SERVER CONFIG :
@@ -24,11 +23,7 @@ async function addIceCandidateToPeerConnection(fanPeerConnection: RTCPeerConnect
     await fanPeerConnection.addIceCandidate(new RTCIceCandidate(candidate));
 }
 
-// function addTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection): RTCRtpSender[] {
 
-//     return stream.getTracks().map((track) => peerConnection.addTrack(track, stream));
-
-// }
 
 async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerConnection: RTCPeerConnection, socket: Socket, socketMessage: string, regieRoomId: string) {
     peerConnection.addTransceiver('video', { direction: 'recvonly' });
@@ -37,15 +32,25 @@ async function createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(peerCo
     socket.emit(socketMessage, { room: { offer }, regieRoomId })
 }
 
-function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection, stream: MediaStream) {
-    let senderToDelete: RTCRtpSender | null = null;
-    if (stream) {
-        stream.getTracks().forEach((track) => {
-            console.log("Add local stream track to peer connexion", track);
-            senderToDelete = peerConnection.addTrack(track, stream);
-        });
+function createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(peerConnection: RTCPeerConnection) {
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 640; // Set width as needed
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+        ctx.fillStyle = 'black'; // Set the color to black or any other color
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
-    return senderToDelete
+
+    // Create a blank video track using the canvas as the source
+    const blankVideoTrack = canvas.captureStream().getVideoTracks()[0];
+
+    // Replace the original video track with the blank video track
+
+
+
+    return peerConnection.addTrack(blankVideoTrack, new MediaStream());
 }
 
 export async function createFanPeerConnection(socket: Socket, fanRemoteStream: MediaStream, remoteVideoRef: React.RefObject<HTMLVideoElement>, id: string) {
@@ -84,9 +89,7 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
         console.log('Connection to FANNNNNNNN', data)
         if (data.regieRoomId !== id) return
         await setRemoteDescriptionToPeerConnectionFromAnswer(fanPeerConnection, data.room.answer)
-        // socket.on('send fan caller candidate', async (data: any) => {
-        //     await addIceCandidateToPeerConnection(fanPeerConnection, data)
-        // })
+
     })
     socket.on('send fan callee candidate', async (data: { candidate: RTCIceCandidateInit, regieRoomId: string }) => {
         if (data.regieRoomId !== id) return
@@ -97,13 +100,13 @@ export async function createFanPeerConnection(socket: Socket, fanRemoteStream: M
     // OTHER :
     // --------
 
-    // addTrackToPeerConnectionFromAStream(fanPeerConnection)
+
 
     await createAnOfferForFansAndSendLocalDescriptionAndEmitOnSocket(fanPeerConnection, socket, 'save regie room with offer for fan', id)
     return fanRemoteStream
 }
 
-export async function createStadePeerConnection(stadePeerConnection: RTCPeerConnection, socket: Socket, fanRemoteStream: MediaStream, regieLocalStream: MediaStream) {
+export async function createStadePeerConnection(stadePeerConnection: RTCPeerConnection, socket: Socket, fanRemoteStream: MediaStream) {
 
 
 
@@ -129,7 +132,7 @@ export async function createStadePeerConnection(stadePeerConnection: RTCPeerConn
     // SOCKET :
     // --------
 
-    const senderToDelete: RTCRtpSender | null = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection, regieLocalStream)
+    const senderToDelete: RTCRtpSender | null = createSenderToDeleteAndAddTrackToPeerConnectionFromAStream(stadePeerConnection)
 
     socket.on('send stade room with answer', async (data: { answer: RTCSessionDescriptionInit }) => {
 
@@ -151,10 +154,14 @@ export async function createStadePeerConnection(stadePeerConnection: RTCPeerConn
         await stadePeerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
 
     })
-    const emptyStream = new MediaStream();
-    emptyStream.getTracks().forEach((track) => {
-        stadePeerConnection.addTrack(track, emptyStream);
-    })
+
+
+
+
+
+
+
+
 
     // -------
     // OTHER :

@@ -28,7 +28,7 @@ export const App: React.FC = () => {
     const initialize = async () => {
       const socket = io(serverUrlSocket);
 
-      const regieLocalStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+
 
 
 
@@ -51,7 +51,7 @@ export const App: React.FC = () => {
 
 
 
-      await Implementations.createStadePeerConnection(stadePeerConnection, socket, remoteStreams[0].mediaStream, regieLocalStream)
+      await Implementations.createStadePeerConnection(stadePeerConnection, socket, remoteStreams[0].mediaStream)
     };
 
     initialize();

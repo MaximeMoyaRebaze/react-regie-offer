@@ -77,7 +77,7 @@ export const App: React.FC = () => {
                   stadePeerConnection.getSenders().forEach((sender) => {
                     sender.replaceTrack(mediaStream.getTracks()[0])
                   })
-                }}>Select fan {1 + index}</Button>}
+                }}>Select a fan {1 + index}</Button>}
               </VStack>
             ))
           }</SimpleGrid>

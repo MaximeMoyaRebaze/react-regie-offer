@@ -8,7 +8,8 @@
     "dev": "vite --host",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "fmt": "dprint fmt"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",
@@ -21,6 +22,7 @@
     "ulid": "^2.3.0"
   },
   "devDependencies": {
+    "dprint": "0.42.5",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
     "@types/socket.io-client": "^3.0.0",

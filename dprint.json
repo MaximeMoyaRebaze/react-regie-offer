@@ -19,7 +19,7 @@
     "module.sortExportDeclarations": "maintain",
     "exportDeclaration.sortNamedExports": "maintain",
     "jsx.quoteStyle": "preferDouble",
-    "lineWidth": 100,
+    "lineWidth": 120,
     "interfaceDeclaration.bracePosition": "sameLine",
     "functionDeclaration.bracePosition": "sameLine",
     "conditionalType.preferSingleLine": true,
